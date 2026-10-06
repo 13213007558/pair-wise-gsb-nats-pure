@@ -1,0 +1,37 @@
+module NATS
+  class ObjectStore
+    module API
+      class ObjectStoreConfig < Struct[untyped]
+      end
+
+      class ObjectLink < Struct[untyped]
+      end
+
+      class ObjectInfo
+        attr_accessor name: String?
+        attr_accessor description: String?
+        attr_accessor bucket: String?
+        attr_accessor nuid: String?
+        attr_accessor size: Integer
+        attr_accessor chunks: Integer
+        attr_accessor deleted: bool
+        attr_accessor digest: String?
+        attr_accessor mod_time: Time?
+        attr_accessor headers: Hash[String, String]?
+        attr_accessor link: NATS::ObjectStore::API::ObjectLink?
+        attr_accessor metadata: untyped
+        attr_accessor chunk_size: Integer?
+
+        def initialize: (?Hash[Symbol, untyped]) -> void
+
+        def to_json: (*untyped) -> String
+
+        def self.from_json: (String, ?bucket: String?) -> NATS::ObjectStore::API::ObjectInfo
+
+        def self.encode_headers: (Hash[String, String]) -> String
+
+        def self.decode_headers: (String?) -> Hash[String, String]?
+      end
+    end
+  end
+end

@@ -1,0 +1,11 @@
+module NATS
+  class ObjectStore
+    module Manager
+      def object_store: (String) -> NATS::ObjectStore
+
+      def create_object_store: (NATS::ObjectStore::API::ObjectStoreConfig | Hash[Symbol, untyped] | String) -> NATS::ObjectStore
+
+      def delete_object_store: (String) -> bool
+    end
+  end
+end

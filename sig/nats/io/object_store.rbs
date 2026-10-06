@@ -1,0 +1,54 @@
+module NATS
+  class ObjectStore
+    HDR_CHUNK_SIZE: 'Nats-Object-Store-Chunk-Size'
+    HDR_DELETE: 'Nats-Object-Store-Deleted'
+    ROLLUP: 'Nats-Rollup'
+    MSG_ROLLUP_SUBJECT: 'sub'
+
+    DEFAULT_CHUNK_SIZE: Integer
+    MAX_LINK_DEPTH: Integer
+
+    @name: String
+    @stream: String
+    @js: untyped
+    @pre: String
+    @chunks_pre: String
+    @meta_pre: String
+
+    def initialize: (Hash[Symbol, untyped]) -> void
+
+    attr_reader name: () -> String
+
+    def self.valid_name?: (untyped) -> bool
+
+    def self.digest_of: (String) -> String
+
+    def put: (String, ?(String | IO), ?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+    def get: (String, ?Hash[Symbol, untyped]) ?{ (String, NATS::ObjectStore::API::ObjectInfo) -> void } -> (Enumerator[Array[untyped]] | NATS::ObjectStore::API::ObjectInfo)
+
+    def get_info: (String, ?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+    def delete: (String, ?Hash[Symbol, untyped]) -> nil
+
+    def add_link: (String, String, ?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+    def add_bucket_link: (String, String) -> NATS::ObjectStore::API::ObjectInfo
+
+    def delete_chunks: (String) -> NATS::JetStream::PubAck
+
+    private
+
+    def publish_meta: (String, NATS::ObjectStore::API::ObjectInfo) -> NATS::JetStream::PubAck
+
+    def raw_object_info: (String, ?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+    def object_info: (String, ?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+    def resolve: (String, ?Hash[Symbol, untyped]) -> [NATS::ObjectStore::API::ObjectInfo, NATS::ObjectStore]
+
+    def store_for: (String?) -> NATS::ObjectStore
+
+    def stream_chunks: (NATS::ObjectStore::API::ObjectInfo, ?Hash[Symbol, untyped]) { (String, NATS::ObjectStore::API::ObjectInfo) -> void } -> void
+  end
+end

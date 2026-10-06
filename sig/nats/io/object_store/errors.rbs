@@ -1,0 +1,36 @@
+module NATS
+  class ObjectStore
+    class Error < NATS::Error
+    end
+
+    class BucketNotFoundError < Error
+    end
+
+    class BadBucketError < Error
+    end
+
+    class ObjectNotFoundError < Error
+      attr_reader object: String?
+
+      def initialize: (?String?) -> void
+    end
+
+    class ObjectDeletedError < ObjectNotFoundError
+    end
+
+    class InvalidObjectNameError < Error
+    end
+
+    class InvalidLinkError < Error
+    end
+
+    class LinkCycleError < Error
+    end
+
+    class TooManyLinksError < Error
+    end
+
+    class InvalidChainError < Error
+    end
+  end
+end
