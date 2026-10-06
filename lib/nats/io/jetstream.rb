@@ -84,6 +84,10 @@ module NATS
       end
     end
 
+    # MAX_BATCH_SIZE is the most messages an atomic batch can have, as
+    # nats-server limits it.
+    MAX_BATCH_SIZE = 256
+
     # publish produces a message for JetStream.
     #
     # @param subject [String] The subject from a stream where the message will be sent.
@@ -145,6 +149,94 @@ module NATS
       raise JS.from_error(result[:error]) if result[:error]
 
       PubAck.new(result)
+    end
+
+    # publish_batch publishes an ordered list of messages as one atomic
+    # batch: the stream stores all of them, or none of them (requires
+    # nats-server v2.12.0 and a stream with allow_atomic).
+    #
+    # @param messages [Array<Hash>] The messages to publish, each with a
+    #   :subject and a :payload, stored in the order given.
+    # @param params [Hash] Options to customize the publish requests.
+    # @option params [Float] :timeout Time to wait for the commit ack.
+    # @option params [String] :stream Expected Stream to which the batch is published.
+    # @option params [Integer] :max_batch_size The most messages a batch can
+    #   have, MAX_BATCH_SIZE by default.
+    # @raise [ArgumentError] When the batch is empty, has more than
+    #   max_batch_size messages, or a message has no subject, before
+    #   anything is sent.
+    # @raise [NATS::JetStream::Error] When the connected server is known to
+    #   be too old for atomic batches, before anything is sent.
+    # @raise [NATS::JetStream::Error::BatchNotCommitted] When sending failed
+    #   before the commit: the batch was not stored, and can be sent again.
+    # @raise [NATS::JetStream::Error::APIError] When the stream refuses the
+    #   batch, as one without allow_atomic does.
+    # @raise [NATS::JetStream::Error::NoStreamResponse] When no stream takes
+    #   the subjects.
+    # @raise [NATS::JetStream::Error::BatchCommitUnknown] When the commit
+    #   was sent but its ack did not arrive, or does not match the batch:
+    #   the batch may be stored. Do not send it again with another batch
+    #   id, or it may be stored twice; check the stream for the batch id
+    #   first.
+    # @return [PubAck] The ack of the commit, with the batch id in batch,
+    #   the number of messages stored in count, and the stream sequence of
+    #   the last one in seq. duplicate is true when the batch was committed
+    #   already, such as when the same batch id is committed again.
+    def publish_batch(messages, **params)
+      params[:timeout] ||= @opts[:timeout]
+      max_batch_size = params[:max_batch_size] || MAX_BATCH_SIZE
+      raise ArgumentError.new("nats: empty batch") if messages.empty?
+      if messages.size > max_batch_size
+        raise ArgumentError.new("nats: batch of #{messages.size} messages exceeds the max batch size of #{max_batch_size}")
+      end
+      check_atomic_batch_supported!
+
+      batch_id = NATS::NUID.next
+      count = messages.size
+      msgs = messages.each_with_index.map do |message, i|
+        subject = message[:subject]
+        raise ArgumentError.new("nats: invalid subject #{subject.inspect}") unless nonempty_string?(subject)
+
+        header = {
+          Header::BATCH_ID => batch_id,
+          Header::BATCH_SEQUENCE => (i + 1).to_s,
+          Header::EXPECTED_STREAM => params[:stream]
+        }.compact
+        header[Header::BATCH_COMMIT] = "1" if i == count - 1
+        NATS::Msg.new(subject: subject, data: message[:payload] || "", header: header)
+      end
+
+      # Only the commit is acked: the other messages go without a reply.
+      msgs[0...-1].each do |msg|
+        begin
+          @nc.publish_msg(msg)
+        rescue ::NATS::IO::Error => e
+          raise Error::BatchNotCommitted.new("nats: batch #{batch_id} not committed: #{e.message}")
+        end
+      end
+
+      begin
+        resp = @nc.request_msg(msgs.last, **params)
+        result = JSON.parse(resp.data, symbolize_names: true)
+      rescue ::NATS::IO::NoRespondersError
+        raise JetStream::Error::NoStreamResponse.new("nats: no response from stream")
+      rescue ::NATS::IO::ConnectError, ::NATS::IO::ConnectionClosedError => e
+        # The commit was not sent, so the server abandons the batch.
+        raise Error::BatchNotCommitted.new("nats: batch #{batch_id} not committed: #{e.message}")
+      rescue NATS::Timeout => e
+        raise Error::BatchCommitUnknown.new(
+          "nats: batch #{batch_id} commit sent, but no ack received: #{e.message}",
+          batch: batch_id, count: count)
+      end
+      raise JS.from_error(result[:error]) if result[:error]
+
+      ack = PubAck.new(result)
+      unless ack.batch == batch_id && ack.count == count
+        raise Error::BatchCommitUnknown.new(
+          "nats: batch #{batch_id} commit ack mismatches: expected count #{count}, ack is for batch #{ack.batch.inspect} with count #{ack.count.inspect}",
+          batch: batch_id, count: count)
+      end
+      ack
     end
 
     # subscribe binds or creates a push subscription to a JetStream pull consumer.
@@ -424,6 +516,21 @@ module NATS
 
     def nonempty_string?(value)
       value.is_a?(String) && !value.empty?
+    end
+
+    # Atomic batches need nats-server v2.12.0. A server known to be older
+    # is refused before anything is sent; when its version is not known,
+    # the server decides.
+    def check_atomic_batch_supported!
+      return unless @nc.respond_to?(:server_info)
+
+      version = @nc.server_info[:version]
+      return unless version.is_a?(String)
+
+      major, minor = version.scan(/\d+/).first(2).map(&:to_i)
+      return if major.nil? || major > 2 || (major == 2 && minor >= 12)
+
+      raise Error.new("nats: atomic batch publish requires nats-server v2.12.0 or later, connected to #{version}")
     end
   end
 end

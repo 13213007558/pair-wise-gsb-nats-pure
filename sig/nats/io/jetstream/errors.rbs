@@ -4,6 +4,17 @@ module NATS
       class NoStreamResponse < NATS::JetStream::Error
       end
 
+      class BatchNotCommitted < NATS::JetStream::Error
+      end
+
+      class BatchCommitUnknown < NATS::JetStream::Error
+        attr_reader batch: String?
+
+        attr_reader count: Integer?
+
+        def initialize: (?String? msg, batch: String?, count: Integer?) -> void
+      end
+
       class InvalidDurableName < NATS::JetStream::Error
       end
 

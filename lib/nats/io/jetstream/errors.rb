@@ -21,6 +21,29 @@ module NATS
       # When there is a NATS::IO::NoResponders error after making a publish request.
       class NoStreamResponse < Error; end
 
+      # When an atomic batch was not committed: sending it failed before
+      # its commit, so the server stored none of it, and it can be sent
+      # again.
+      class BatchNotCommitted < Error; end
+
+      # When whether the server committed an atomic batch is unknown: its
+      # commit was sent, but no ack arrived, or the ack does not match the
+      # batch. The batch may be stored, so do not send it again with
+      # another batch id, or it may be stored twice; check the stream for
+      # the batch id first.
+      class BatchCommitUnknown < Error
+        # @return [String] Id of the batch whose commit is in doubt.
+        attr_reader :batch
+        # @return [Integer] Number of messages the batch had.
+        attr_reader :count
+
+        def initialize(msg = nil, batch: nil, count: nil)
+          @batch = batch
+          @count = count
+          super(msg)
+        end
+      end
+
       # When an invalid durable or consumer name was attempted to be used.
       class InvalidDurableName < Error; end
 
