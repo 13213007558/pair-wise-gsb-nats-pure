@@ -8,9 +8,11 @@ module NATS
 
     def publish: (String, ?String, **untyped) -> NATS::JetStream::PubAck
 
-    def subscribe: (String, Hash[Symbol, untyped]) { (?(NATS::Msg | String), ?String, ?String, ?Hash[Symbol, untyped]) -> void } -> NATS::JetStream::PushSubscription
+    def subscribe: (String | Array[String], Hash[Symbol, untyped]) ?{ (?(NATS::Msg | String), ?String, ?String, ?Hash[Symbol, untyped]) -> void } -> (NATS::JetStream::PushSubscription | NATS::JetStream::OrderedSubscription)
 
-    def pull_subscribe: (String, String, Hash[Symbol, untyped]) -> NATS::JetStream::PullSubscription
+    def ordered_subscribe: (String | Array[String], ?Hash[Symbol, untyped]) ?{ (?(NATS::Msg | String), ?String, ?String, ?Hash[Symbol, untyped]) -> void } -> NATS::JetStream::OrderedSubscription
+
+    def pull_subscribe: (String | Array[String] | nil, String, Hash[Symbol, untyped]) -> NATS::JetStream::PullSubscription
 
     private
 

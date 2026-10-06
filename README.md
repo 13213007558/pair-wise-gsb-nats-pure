@@ -102,6 +102,22 @@ loop do
 end
 ```
 
+For a single read of a stream in stream-sequence order, use an ephemeral ordered
+push consumer. Gaps in the filtered consumer sequence, missed heartbeats, and
+callback failures cause a fresh temporary consumer to resume after the last
+successfully delivered message, so stream sequence gaps caused solely by subject
+filtering are not treated as lost messages:
+
+```ruby
+sub = js.ordered_subscribe("foo") do |msg|
+  puts "##{msg.metadata.sequence.stream}: #{msg.data}"
+end
+
+# The same entry point is also available through subscribe.
+sub = js.subscribe("foo", ordered: true)
+msg = sub.next_msg
+```
+
 Messages can expire on their own, in streams that allow it (nats-server 2.11):
 
 ```ruby

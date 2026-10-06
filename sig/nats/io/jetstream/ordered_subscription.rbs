@@ -1,0 +1,17 @@
+module NATS
+  class JetStream
+    class OrderedSubscription
+      include MonitorMixin
+
+      attr_reader stream: String
+      attr_reader consumer: String?
+      attr_reader subject: String | Array[String] | nil
+
+      def next_msg: (?Hash[Symbol, untyped]) -> NATS::Msg
+
+      def unsubscribe: () -> untyped
+
+      def consumer_info: (?Hash[Symbol, untyped]) -> NATS::JetStream::ConsumerInfo?
+    end
+  end
+end

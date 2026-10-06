@@ -20,6 +20,7 @@ require_relative "jetstream/header"
 require_relative "jetstream/js"
 require_relative "jetstream/manager"
 require_relative "jetstream/msg"
+require_relative "jetstream/ordered_subscription"
 require_relative "jetstream/pull_subscription"
 require_relative "jetstream/push_subscription"
 
@@ -158,6 +159,8 @@ module NATS
     # @option params [Hash] :config Configuration for the consumer.
     # @return [NATS::JetStream::PushSubscription]
     def subscribe(subject, params = {}, &cb)
+      return ordered_subscribe(subject, params.except(:ordered), &cb) if params[:ordered]
+
       params[:consumer] ||= params[:durable]
       params[:consumer] ||= params[:name]
       multi_filter = if subject.is_a?(Array) && (subject.size == 1)
@@ -295,6 +298,31 @@ module NATS
         consumer: consumer
       )
       sub
+    end
+
+    # ordered_subscribe creates a temporary push consumer that presents the
+    # stream's matching messages in strictly increasing stream sequence order.
+    # It rebuilds the ephemeral consumer after the last successfully delivered
+    # message when consumer delivery has a gap, a heartbeat reports missed
+    # delivery, or the callback raises. A callback exception therefore means the
+    # message was not delivered; the callback will receive it again.
+    #
+    # @param subject [String, Array] Subject(s) from which the messages will be fetched.
+    # @param params [Hash] Options for the ordered subscription.
+    # @option params [String] :stream Name of the Stream to consume.
+    # @option params [Hash] :config Optional ephemeral consumer configuration.
+    # @option params [Integer] :idle_heartbeat Heartbeat interval in seconds.
+    # @return [NATS::JetStream::OrderedSubscription]
+    def ordered_subscribe(subject, params = {}, &cb)
+      stream = params[:stream] || find_stream_name_by_subject(subject.is_a?(Array) ? subject.first : subject)
+      OrderedSubscription.new(
+        js: self,
+        stream: stream,
+        subject: subject,
+        config: params[:config] || {},
+        callback: cb,
+        idle_heartbeat: params[:idle_heartbeat]
+      )
     end
 
     # pull_subscribe binds or creates a subscription to a JetStream pull consumer.
