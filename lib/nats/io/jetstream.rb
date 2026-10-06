@@ -20,6 +20,7 @@ require_relative "jetstream/header"
 require_relative "jetstream/js"
 require_relative "jetstream/manager"
 require_relative "jetstream/msg"
+require_relative "jetstream/ordered_consumer"
 require_relative "jetstream/pull_subscription"
 require_relative "jetstream/push_subscription"
 
@@ -378,6 +379,36 @@ module NATS
         nms: subject
       )
       sub
+    end
+
+    # ordered_consumer returns an OrderedConsumer that delivers the messages
+    # of a stream to a block, one at a time and in their stream order, for
+    # analysis tasks that read the stream once. It consumes through an
+    # ephemeral consumer, which it recreates from just after the last
+    # delivered message when it loses deliveries.
+    #
+    # @example
+    #   ordered = js.ordered_consumer("EVENTS", filter_subject: "events.>")
+    #   ordered.each do |msg|
+    #     process(msg)
+    #   end
+    #
+    # @param stream [String] Name of the stream to consume.
+    # @param params [Hash] Options to customize the OrderedConsumer.
+    # @option params [String] :filter_subject Consume only the messages of
+    #   this subject. Their stream sequences jump where the filter skips
+    #   messages; that is not a loss.
+    # @option params [String] :deliver_policy Where the first consumer
+    #   starts delivering: "all" by default.
+    # @option params [Integer] :opt_start_seq Stream sequence at which the
+    #   first consumer starts, with a deliver_policy of "by_start_sequence".
+    # @option params [Integer] :idle_heartbeat Seconds between the idle
+    #   heartbeats of the consumer; 5 by default.
+    # @option params [Integer] :inactive_threshold Seconds after which the
+    #   server removes the idle ephemeral consumer; 5 minutes by default.
+    # @return [NATS::JetStream::OrderedConsumer]
+    def ordered_consumer(stream, params = {})
+      OrderedConsumer.new(self, stream, params)
     end
 
     private
