@@ -1,0 +1,36 @@
+module NATS
+  class ObjectStore
+    class Error < NATS::Error
+    end
+    class InvalidObjectNameError < Error
+    end
+    class InvalidObjectStoreNameError < Error
+    end
+    class InvalidObjectOptionsError < Error
+    end
+    class BucketNotFoundError < Error
+    end
+    class BadBucketError < Error
+    end
+    class ObjectNotFoundError < Error
+    end
+    class ObjectDeletedError < Error
+    end
+    class InvalidObjectError < Error
+    end
+    class DigestMismatchError < Error
+    end
+    class SizeMismatchError < Error
+    end
+    class ChunkMismatchError < Error
+    end
+    class InvalidLinkError < Error
+    end
+    class LinkNotFoundError < Error
+    end
+    class LinkCycleError < Error
+    end
+    class LinkDepthExceededError < Error
+    end
+  end
+end

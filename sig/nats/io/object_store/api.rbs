@@ -1,0 +1,28 @@
+module NATS
+  class ObjectStore
+    module API
+      DEFAULT_CHUNK_SIZE: Integer
+      MAX_CHUNK_SIZE: Integer
+      DEFAULT_REPLICAS: Integer
+
+      class ObjectStoreConfig < Struct[untyped]
+      end
+
+      class ObjectLink < Struct[untyped]
+        def self.from_json: (?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectLink
+
+        def link?: () -> bool
+
+        def bucket_link?: () -> bool
+      end
+
+      class ObjectInfo < Struct[untyped]
+        def self.from_json: (String | Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+        def link?: () -> bool
+
+        def bucket_link?: () -> bool
+      end
+    end
+  end
+end

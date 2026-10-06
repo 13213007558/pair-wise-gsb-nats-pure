@@ -2,6 +2,7 @@ module NATS
   class JetStream
     extend Manager
     extend KeyValue::Manager
+    extend ObjectStore::Manager
 
     class PubAck < Struct[String | Numeric | bool]
     end

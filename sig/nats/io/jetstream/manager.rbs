@@ -9,6 +9,8 @@ module NATS
 
       def delete_stream: (String, ?Hash[Symbol, untyped]) -> bool
 
+      def purge_stream: (String, ?Hash[Symbol, untyped]) -> bool
+
       def add_consumer: (String, JetStream::API::ConsumerConfig | Hash[Symbol, untyped], ?Hash[Symbol, untyped]) -> JetStream::API::ConsumerInfo
 
       def create_consumer: (String, JetStream::API::ConsumerConfig | Hash[Symbol, untyped], ?Hash[Symbol, untyped]) -> JetStream::API::ConsumerInfo

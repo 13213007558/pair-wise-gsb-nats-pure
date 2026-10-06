@@ -1,0 +1,52 @@
+module NATS
+  class ObjectStore
+    module API
+    end
+
+    VALID_OBJECT_RE: Regexp
+    MAX_LINK_DEPTH: Integer
+
+    attr_reader name: String
+    attr_reader js: NATS::JetStream
+    attr_reader stream: String
+
+    def initialize: (Hash[Symbol, untyped]) -> void
+
+    def put: (String, ?untyped, ?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+    def get: (String) { (String) -> void } -> NATS::ObjectStore::API::ObjectInfo
+              | (String) -> Enumerator[String, untyped]
+
+    alias each_chunk get
+
+    def object_info: (String, ?Hash[Symbol, untyped]) -> NATS::ObjectStore::API::ObjectInfo
+
+    alias info object_info
+
+    def raw_object_info: (String) -> NATS::ObjectStore::API::ObjectInfo
+
+    def chunk_enumerator: (NATS::ObjectStore::API::ObjectInfo) -> Enumerator[String, untyped]
+
+    def delete: (String) -> bool
+
+    def add_link: (String, NATS::ObjectStore | String, ?String?) -> NATS::ObjectStore::API::ObjectInfo
+
+    alias link add_link
+
+    def add_bucket_link: (String, NATS::ObjectStore | String) -> NATS::ObjectStore::API::ObjectInfo
+
+    private
+
+    def validate_object_name: (untyped) -> void
+    def object_subject: (String) -> String
+    def chunk_subject: (String) -> String
+    def follow_link: (NATS::ObjectStore::API::ObjectInfo, Set[String], ?String)
+      -> NATS::ObjectStore::API::ObjectInfo
+    def resolve_target: (String) -> [NATS::ObjectStore, NATS::ObjectStore::API::ObjectInfo]
+    def follow_target: (NATS::ObjectStore::API::ObjectInfo, Set[String], ?String)
+      -> [NATS::ObjectStore, NATS::ObjectStore::API::ObjectInfo]
+    def encode_digest: (untyped) -> String
+    def decode_digest: (String?) -> String
+    def purge_old_chunks: (NATS::ObjectStore::API::ObjectInfo?, String?) -> untyped
+  end
+end

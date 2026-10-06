@@ -14,6 +14,10 @@
 # limitations under the License.
 #
 require_relative "kv"
+require_relative "object_store"
+require_relative "object_store/api"
+require_relative "object_store/errors"
+require_relative "object_store/manager"
 require_relative "jetstream/api"
 require_relative "jetstream/errors"
 require_relative "jetstream/header"
@@ -58,6 +62,7 @@ module NATS
       # Include JetStream::Manager
       extend Manager
       extend KeyValue::Manager
+      extend ObjectStore::Manager
     end
 
     # PubAck is the API response from a successfully published message.

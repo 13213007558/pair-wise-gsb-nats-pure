@@ -173,6 +173,39 @@ rescue NATS::IO::Timeout
 end
 ```
 
+## Object Store Usage
+
+JetStream Object Store stores large objects as chunks and exposes them through NATS Object Store metadata.
+
+```ruby
+require 'stringio'
+
+js = nc.jetstream
+store = js.create_object_store(bucket: "FILES", description: "uploads")
+
+# Any object responding to #read works; chunks are streamed, so the whole
+# object is not buffered in memory.
+store.put("report.bin", File.open("report.bin", "rb"), chunk_size: 4096)
+
+# Latest metadata includes chunk count, total size and SHA-256 digest.
+info = store.object_info("report.bin")
+puts [info.chunks, info.size, info.digest].inspect
+
+# Download one chunk at a time.
+File.open("report-copy.bin", "wb") do |file|
+  store.get("report.bin") { |chunk| file.write(chunk) }
+end
+
+# Links can point into another bucket. Cycles and excessive link depth
+# raise NATS::ObjectStore::LinkCycleError or LinkDepthExceededError.
+archive = js.object_store("ARCHIVE")
+store.add_link("latest.bin", archive, "2026/report.bin")
+store.add_bucket_link("archive", archive)
+
+store.delete("report.bin")
+js.delete_object_store("FILES")
+```
+
 ## Service API
 
 The service API allows you to easily [build NATS services](docs/service_api.md).
