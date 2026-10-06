@@ -140,6 +140,43 @@ module NATS
           @code ||= 423
         end
       end
+
+      # When an atomic batch publish fails. Carries the id of the batch,
+      # so that its commit can be retried with it.
+      class BatchError < Error
+        attr_reader :batch_id
+
+        def initialize(message = nil, batch_id: nil)
+          @batch_id = batch_id
+          super(message)
+        end
+      end
+
+      # When the server is known to be too old for atomic batches, which
+      # need nats-server v2.12.0. Raised before anything is sent.
+      class BatchNotSupported < BatchError; end
+
+      # When an atomic batch publish failed before its commit message was
+      # sent. The batch was not committed, and a new one can be published.
+      class BatchNotCommitted < BatchError; end
+
+      # When the outcome of an atomic batch commit is unknown, as the
+      # connection was lost or the ack did not arrive after the commit
+      # message was sent. The batch may have been committed, so retrying
+      # with a new batch id can store the messages twice; retry the commit
+      # with the same batch id instead.
+      class BatchCommitUnknown < BatchError; end
+
+      # When the ack of an atomic batch commit does not confirm the batch:
+      # it names another batch, or another number of messages than was sent.
+      class BatchAckMismatch < BatchError
+        attr_reader :ack
+
+        def initialize(message = nil, batch_id: nil, ack: nil)
+          @ack = ack
+          super(message, batch_id: batch_id)
+        end
+      end
     end
   end
 end
